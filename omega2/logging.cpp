@@ -10,8 +10,11 @@
 std::ofstream logfile;
 
 logging::logging(){
+  
   std::string filename = currentDateTime() + std::string(".log");
-  logfile.open(filename.c_str());
+  printf("Initializing logging.\n");
+  logfile.open(filename.c_str(), std::ofstream::out | std::ofstream::app);
+  printf("Initialized logging.\n");
 }
 
 logging::~logging(){

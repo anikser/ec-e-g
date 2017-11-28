@@ -1,4 +1,6 @@
 #include "dataInterface.h"
+#include "logging.h"
+
 #include <stdio.h>
 #include <ugpio/ugpio.h>
 #include <unistd.h>
@@ -21,10 +23,10 @@ int initButton(){
 
 
 int main() {
-  printf("Program Start\n");
-
+  logging logger = logging();
+  logger.log(std::string("Program Start\n"));
   initButton();
-  dataInterface interface = dataInterface();
+  dataInterface interface = dataInterface(logger);
 
   int val;
   bool cont = true;
@@ -32,9 +34,8 @@ int main() {
   while(cont){
     val = gpio_get_value(BUTTON_PIN);
     if(val){
-      printf("Received value of %i\n", val);
+      //logger.log("Read value of %i on GPIO pin %i\n", val, BUTTON_PIN);
       interface.record();
-      
       cont = false;
     }
     usleep(10000);
