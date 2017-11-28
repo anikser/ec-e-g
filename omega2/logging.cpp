@@ -9,24 +9,13 @@
 
 std::ofstream logfile;
 
-const std::string currentDateTime() {
-    time_t     now = time(0);
-    struct tm  tstruct;
-    char       buf[80];
-    tstruct = *localtime(&now);
-    strftime(buf, sizeof(buf), "%Y_%m_%d_%X", &tstruct);
-
-    return buf;
-}
 logging::logging(){
-	//get timestamp -> filename
-	std::string filename = currentDateTime() + ".log";
-	logfile.open(filename);
-
-
+  std::string filename = currentDateTime() + std::string(".log");
+  logfile.open(filename.c_str());
 }
 
 logging::~logging(){
+  logfile.close();
 }
 
 int logging::log(std::string output){
@@ -45,6 +34,16 @@ int logging::error(std::string output){
   logfile << "(3) Error: ";
   write(output);
   return 0;
+}
+
+std::string logging::currentDateTime() {
+  time_t     now = time(0);
+  struct tm  tstruct;
+  char       buf[80];
+  tstruct = *localtime(&now);
+  strftime(buf, sizeof(buf), "%Y_%m_%d_%X", &tstruct);
+  
+  return buf;
 }
 
 int logging::write(std::string output){

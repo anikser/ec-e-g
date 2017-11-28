@@ -1,4 +1,5 @@
 #pragma once
+
 #include "dataInterface.h"
 
 #include <iostream>

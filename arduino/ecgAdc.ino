@@ -6,7 +6,7 @@ void setup() {
 
 void loop() {
   if ((digitalRead(10) == 1) || (digitalRead(11) == 1)){
-    Serial.println('!');
+    Serial.println('0');
   }else{
     Serial.println(analogRead(A0));
   }
