@@ -1,12 +1,15 @@
 #pragma once
 
+#include <string>
+
 class logging {
   public:
     logging();
     ~logging();
-    int log();
-    int warn();
-    int error();
+    const std::string currentDateTime(); 
+    int log(std::string output);
+    int warn(std::string output);
+    int error(std::string output);
   private:
-    int write();
+    int write(std::string output);
 };
