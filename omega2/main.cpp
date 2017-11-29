@@ -39,13 +39,12 @@ int main() {
 
   int val;
   bool cont = true;
-  int heartRate;
+
   logger->log("Initialized program");
   while(cont){
     val = gpio_get_value(BUTTON_PIN);
     if(val){
-      heartRate = interface->record();
-      printf("Heartrate: %i\n", heartRate);
+      interface->record();
       //cont = false;
     }
     usleep(10000);
@@ -57,6 +56,7 @@ int main() {
   delete interface;
   logger->log("Freeing logger...");
   delete logger;
+  printf("Freed logger.\n");
   return 0;
 }
 

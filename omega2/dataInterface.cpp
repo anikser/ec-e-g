@@ -119,7 +119,7 @@ dataInterface::~dataInterface(){
 }
 
 
-int dataInterface::record(){
+void dataInterface::record(){
   if(gpio_set_value(LED2_PIN, 0) < 0){
     temp2 = new char[80];
     sprintf(temp2, "Error turning off LED on GPIO pin %i", LED2_PIN);
@@ -143,38 +143,25 @@ int dataInterface::record(){
       _logger->error("Failed to read from serial port");
     };
     chunk[ind] = atoi(buff);
-    printf("Point: %i\n", chunk[ind]);
+    //printf("Point: %i\n", chunk[ind]);
 	  ind++;
   }
-  
-  writeCSV(chunk, "temp.csv");
 
   if(gpio_set_value(LED1_PIN, 0) < 0){
     temp2 = new char[80];
     sprintf(temp2, "Error turning off LED on GPIO pin %i", LED1_PIN);
     _logger->warn(temp2);
   }
+
+  _logger->recordData(chunk, MAX_RECORDING_POINTS, SAMPLE_PERIOD, getHeartRate(chunk));
+  _logger->log("Successfully recorded data");
+
   if(gpio_set_value(LED2_PIN, 1) < 0){
     temp2 = new char[80];
     sprintf(temp2, "Error turning on LED on GPIO pin %i", LED2_PIN);
     _logger->warn(temp2);
   }
-  
-  _logger->log("Successfully recorded data");
-  return getHeartRate(chunk);
 }
-
-int dataInterface::writeCSV(int chunk[], const char filename[]){
-  std::ofstream out;
-  out.open(filename);
-  for (int i=0; i<MAX_RECORDING_POINTS; i++){
-    out << i*SAMPLE_PERIOD << "," << chunk[i] << std::endl;
-  }
-  out.close();
-  _logger->log("Successfully wrote .csv file");
-  return 0;
-}
-
 
 int dataInterface::getHeartRate(int chunk[]){
   _logger->log("Finding heart rate...");
