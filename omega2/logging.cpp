@@ -7,13 +7,17 @@
 #include <string>
 #include <time.h>
 
+//const char* JOURNAL_FILENAME = "journal.txt";
+
 std::ofstream* logfile;
+//std::ofstream* journalfile;
 
 logging::logging(){
   char* path = new char[80];
   sprintf(path, "/root/%s%s", currentDateTime(), ".log");
   printf("Initializing logging.\n");
   logfile =  new std::ofstream(path);
+  //journalfile = new std::ofstream(JOURNAL_FILENAME);
   printf("Initialized logging.\n");
 }
 

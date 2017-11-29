@@ -14,6 +14,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <ctime>
+#include <math.h>
 
 #include <ugpio/ugpio.h>
 
@@ -54,10 +55,30 @@ dataInterface::dataInterface(logging* logger){
   }
 
   if(gpio_set_value(LED1_PIN, 0) < 0){
-    _logger->warn("Error turning off LED");
+    temp2 = new char[80];
+    sprintf(temp2, "Error turning off LED on GPIO pin %i", LED1_PIN);
+    _logger->warn(temp2);
   }
 
+  if (!gpio_is_requested(LED2_PIN)){
+    if(gpio_request(LED2_PIN, NULL) < 0){
+      temp2 = new char[80];
+      sprintf(temp2, "GPIO pin %i request failed", LED2_PIN);
+	    _logger->error(temp2);
+	  }
+  }
 
+  if (gpio_direction_output(LED2_PIN, 0) < 0){
+    temp2 = new char[80];
+    sprintf(temp2, "Failed to set GPIO pin %i to output", LED2_PIN);
+	  _logger->error(temp2);
+  }
+
+  if(gpio_set_value(LED2_PIN, 1) < 0){
+    temp2 = new char[80];
+    sprintf(temp2, "Error turning on LED on GPIO pin %i", LED2_PIN);
+    _logger->warn(temp2);
+  }
 
   _fd = open(SERIAL_PORT, O_RDWR | O_NOCTTY | O_NDELAY);
   
@@ -75,12 +96,22 @@ dataInterface::dataInterface(logging* logger){
   tcsetattr(_fd, TCSANOW, &settings);
   tcflush(_fd, TCIFLUSH);
 
-  fcntl(_fd, F_SETFL, 0);
-
-  
+  fcntl(_fd, F_SETFL, 0); 
 }
 
 dataInterface::~dataInterface(){
+  if(gpio_set_value(LED1_PIN, 0) < 0){
+    temp2 = new char[80];
+    sprintf(temp2, "Error turning off LED on GPIO pin %i", LED1_PIN);
+    _logger->warn(temp2);
+  }
+
+  if(gpio_set_value(LED2_PIN, 0) < 0){
+    temp2 = new char[80];
+    sprintf(temp2, "Error turning off LED on GPIO pin %i", LED2_PIN);
+    _logger->warn(temp2);
+  }
+
   _logger->log("Closing serial device...");
   close(_fd);
   _logger->log("Freeing GPIO...");
@@ -89,9 +120,16 @@ dataInterface::~dataInterface(){
 
 
 int dataInterface::record(){
+  if(gpio_set_value(LED2_PIN, 0) < 0){
+    temp2 = new char[80];
+    sprintf(temp2, "Error turning off LED on GPIO pin %i", LED2_PIN);
+    _logger->warn(temp2);
+  }
+
   if(gpio_set_value(LED1_PIN, 1) < 0){
-    _logger->warn("Error turning on LED");
-    return -1;
+    temp2 = new char[80];
+    sprintf(temp2, "Error turning on LED on GPIO pin %i", LED1_PIN);
+    _logger->warn(temp2);
   }
 
   int chunk[MAX_RECORDING_POINTS];
@@ -112,13 +150,18 @@ int dataInterface::record(){
   writeCSV(chunk, "temp.csv");
 
   if(gpio_set_value(LED1_PIN, 0) < 0){
-    _logger->warn("Error turning off LED");
-    return -1;
+    temp2 = new char[80];
+    sprintf(temp2, "Error turning off LED on GPIO pin %i", LED1_PIN);
+    _logger->warn(temp2);
+  }
+  if(gpio_set_value(LED2_PIN, 1) < 0){
+    temp2 = new char[80];
+    sprintf(temp2, "Error turning on LED on GPIO pin %i", LED2_PIN);
+    _logger->warn(temp2);
   }
   
   _logger->log("Successfully recorded data");
-  return 1;
-  //return getHeartRate(chunk);
+  return getHeartRate(chunk);
 }
 
 int dataInterface::writeCSV(int chunk[], const char filename[]){
@@ -132,27 +175,29 @@ int dataInterface::writeCSV(int chunk[], const char filename[]){
   return 0;
 }
 
-/*
+
 int dataInterface::getHeartRate(int chunk[]){
-  int smoothed[MAX_RECORDING_POINTS];
+  _logger->log("Finding heart rate...");
+  float smoothed[MAX_RECORDING_POINTS];
   int tempsum;
   int window;
 
   //Apply moving average filter
+
   for (int i=0; i<MAX_RECORDING_POINTS; i++){
     tempsum = 0;
-    for (int j=i; j>=0 && i-j > MOVING_AVERAGE_WINDOW; j--){
+    for (int j=i; j>=0 && ((i-j) < MOVING_AVERAGE_WINDOW); j--){
       tempsum += chunk[j];
       window = j;
     }
-    smoothed[i] = tempsum/(i-window);
+    smoothed[i] = (float)chunk[i] - (float)tempsum/window;
   }
 
   float gradient[MAX_RECORDING_POINTS-1];
 
   //Find gradients of each interval
   for (int i=1; i<MAX_RECORDING_POINTS; i++){
-    gradient[i-1] = (float)(smoothed[i] - smoothed[i-1])/(float)SAMPLE_PERIOD;
+    gradient[i-1] = (smoothed[i] - smoothed[i-1])/(float)SAMPLE_PERIOD;
   }
 
   int numpeaks = 0;
@@ -167,42 +212,78 @@ int dataInterface::getHeartRate(int chunk[]){
   }
 
   //Sort by peak height
-  int* sortedPeaks = sortPeakHeight(peaks, gradient, numpeaks);
+  sortPeakHeight(peaks, gradient, numpeaks);
 
   //calculate distance
-  int* distances[numpeaks-5];
+  float distances[numpeaks-5];
+  int* sorted;
+  float minvariance = 99999999;
+  float minavgdist = -1;
+  float tempvariance;
+  float tempavgdist;
 
+  //Select set with minimum variance
   for (int i=5; i<numpeaks; i++){
-    distances[i-5] = new int[i-1];
-    for(int j=0; j<i-1; j++){
-      distances[i-5][j] = 
+    sorted = sortSet(peaks, i);
+    for(int j=0;j<i;j++){
     }
+
+    tempavgdist = 0;
+    tempvariance = 0;
+    for(int j=0; j<i-1; j++){
+      distances[j] = (sorted[j+1] - sorted[j]) * SAMPLE_PERIOD;
+      tempavgdist += distances[j];
+    }
+    tempavgdist /= i-1;
+
+    for(int j=0; j<i-1; j++){
+      tempvariance += pow(distances[j]-tempavgdist, 2);
+    }
+    tempvariance /= i-1;
+    
+    if(tempvariance < minvariance){
+      minvariance = tempvariance;
+      minavgdist = tempavgdist;
+    }
+    delete[] sorted;
   }
-
-
-
-
-  return 100;
+  return (int)(60000/minavgdist);
 }
 
 
-int* dataInterface::sortPeakHeight(int peaks[], const float& gradient[], const int numpeaks){
-  quicksortHelper(peaks, gradient, 0, numpeaks-1);
-  return peaks;
+void dataInterface::sortPeakHeight(int peaks[], const float gradient[], const int numpeaks){
+  int max;
+  for(int i=0; i<numpeaks; i++){
+    max = i;
+    for(int j=i; j<numpeaks; j++){
+      if (gradient[j] > gradient[max]){
+        max = j;
+      }
+    }
+    mySwap(peaks[i], peaks[max]);
+  }
 }
 
-
-void dataInterface::quicksortHelper(int& peaks[], const float& gradient[], int low, int high){
-
+int* dataInterface::sortSet(const int arr[], const int len){
+  int* sorted = new int[len];
+  for (int i=0; i<len; i++){
+    sorted[i] = arr[i];
+  }
+  int min;
+  for(int i=0; i<len; i++){
+    min = i;
+    for(int j=i; j<len; j++){
+      if (sorted[j] < sorted[min]){
+        min = j;
+      }
+    }
+    mySwap(sorted[i], sorted[min]);
+  }
+  return sorted;
 }
 
-int* smallSort(int arr[], const int len){
-
-}
-
-void swap(int &a, int &b){
+void dataInterface::mySwap(int &a, int &b){
   int temp = a;
   a = b;
   b = a;
 }
-*/

@@ -8,10 +8,10 @@ class dataInterface {
     int record();
   private:
     int writeCSV(int chunk[], const char filename[]);
-    /*
+    
     int getHeartRate(int chunk[]);
-    int* sortPeakHeight(float peaks[], int numpeaks);
-    int quicksortHelper(float& arr, left, right);
-    void swap(int& a, int& b);
-    */
+    void sortPeakHeight(int peaks[], const float gradient[], const int numpeaks);
+    int* sortSet(const int arr[], const int len);
+    void mySwap(int& a, int& b);
+    
 };

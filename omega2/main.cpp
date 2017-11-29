@@ -39,12 +39,14 @@ int main() {
 
   int val;
   bool cont = true;
+  int heartRate;
   logger->log("Initialized program");
   while(cont){
     val = gpio_get_value(BUTTON_PIN);
     if(val){
-      interface->record();
-      cont = false;
+      heartRate = interface->record();
+      printf("Heartrate: %i\n", heartRate);
+      //cont = false;
     }
     usleep(10000);
   }
