@@ -3,7 +3,7 @@
 
 class dataInterface {
   public:
-    dataInterface(logging logger);
+    dataInterface(logging* logger);
     ~dataInterface();
     int record();
   private:

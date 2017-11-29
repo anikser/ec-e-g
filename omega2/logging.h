@@ -6,10 +6,10 @@ class logging {
   public:
     logging();
     ~logging();
-    int log(std::string output);
-    int warn(std::string output);
-    int error(std::string output);
+    int log(const char output[]);
+    int warn(const char output[]);
+    int error(const char output[]);
   private:
-    std::string currentDateTime(); 
-    int write(std::string output);
+    const char* currentDateTime(); 
+    int write(const char output[]);
 };

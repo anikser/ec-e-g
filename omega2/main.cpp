@@ -6,43 +6,55 @@
 #include <unistd.h>
 
 const int BUTTON_PIN = 11;
+logging* logger;
+char* temp;
 
 int initButton(){
   if(!(gpio_is_requested(BUTTON_PIN))){
-    printf("Exporting GPIO pin %i\n", BUTTON_PIN);
+    temp = new char[80];
+    sprintf(temp, "Exporting GPIO pin %i", BUTTON_PIN);
+    logger->log(temp);
     if(gpio_request(BUTTON_PIN, NULL) < 0){
-      printf("GPIO pin %i request failed.\n", BUTTON_PIN);
+      temp = new char[80];
+      sprintf(temp, "GPIO pin %i request failed", BUTTON_PIN);
+      logger->error(temp);
       return -1;
     }
   }
+
   if(gpio_direction_input(BUTTON_PIN) < 0){
-    printf("Failed to set pin %i to input\n", BUTTON_PIN);
+    temp = new char[80];
+    sprintf(temp, "Failed to set pin %i to input", BUTTON_PIN);
+    logger->error(temp);
     return -1;
   }
 }
 
 
 int main() {
-  logging logger = logging();
-  logger.log(std::string("Program Start\n"));
+  logger = new logging();
+  logger->log("Program Start");
   initButton();
-  dataInterface interface = dataInterface(logger);
+  dataInterface* interface = new dataInterface(logger);
 
   int val;
   bool cont = true;
-
+  logger->log("Initialized program");
   while(cont){
     val = gpio_get_value(BUTTON_PIN);
     if(val){
-      //logger.log("Read value of %i on GPIO pin %i\n", val, BUTTON_PIN);
-      interface.record();
+      interface->record();
       cont = false;
     }
     usleep(10000);
   }
-  
+
+  logger->log("Freeing GPIO pin...");
   gpio_free(BUTTON_PIN);
-  delete &interface;
+  logger->log("Freeing data interface...");
+  delete interface;
+  logger->log("Freeing logger...");
+  delete logger;
   return 0;
 }
 

@@ -31,14 +31,33 @@ speed_t BAUD_RATE = B19200;
 
 int _fd;
 
-int _current;
-bool _recording;
-logging _logger;
+logging* _logger;
+char* temp2;
 
-dataInterface::dataInterface(logging logger){
+dataInterface::dataInterface(logging* logger){
   _logger = logger;
-  _logger.log(std::string("Initializing data interface...\n"));
-  _recording = false;
+  _logger->log("Initializing data interface...");
+
+
+  if (!gpio_is_requested(LED1_PIN)){
+    if(gpio_request(LED1_PIN, NULL) < 0){
+      temp2 = new char[80];
+      sprintf(temp2, "GPIO pin %i request failed", LED1_PIN);
+	    _logger->error(temp2);
+	  }
+  }
+
+  if (gpio_direction_output(LED1_PIN, 0) < 0){
+    temp2 = new char[80];
+    sprintf(temp2, "Failed to set GPIO pin %i to output", LED1_PIN);
+	  _logger->error(temp2);
+  }
+
+  if(gpio_set_value(LED1_PIN, 0) < 0){
+    _logger->warn("Error turning off LED");
+  }
+
+
 
   _fd = open(SERIAL_PORT, O_RDWR | O_NOCTTY | O_NDELAY);
   
@@ -58,28 +77,20 @@ dataInterface::dataInterface(logging logger){
 
   fcntl(_fd, F_SETFL, 0);
 
-  if (!gpio_is_requested(LED1_PIN)){
-    if(gpio_request(LED1_PIN, NULL) < 0){
-	    //_logger.error(std::string("GPIO pin %i request failed\n", LED1_PIN));
-	  }
-  }
-  if (gpio_direction_output(LED1_PIN, 0) < 0){
-	  //_logger.error(std::string("Failed to set pin %i to output\n", LED1_PIN));
-  }
-  _logger.log(std::string("Initialized interface\n"));
+  
 }
 
 dataInterface::~dataInterface(){
+  _logger->log("Closing serial device...");
   close(_fd);
+  _logger->log("Freeing GPIO...");
   gpio_free(LED1_PIN);
 }
 
 
 int dataInterface::record(){
-  _recording = true;
-
   if(gpio_set_value(LED1_PIN, 1) < 0){
-    _logger.warn(std::string("Error turning on LED\n"));
+    _logger->warn("Error turning on LED");
     return -1;
   }
 
@@ -91,7 +102,7 @@ int dataInterface::record(){
   int ind = 0;
   while(ind < MAX_RECORDING_POINTS){
     if(read(_fd, buff, BUFFER_SIZE) < 0){
-      _logger.error(std::string("Failed to read from serial port\n"));
+      _logger->error("Failed to read from serial port");
     };
     chunk[ind] = atoi(buff);
     printf("Point: %i\n", chunk[ind]);
@@ -101,9 +112,11 @@ int dataInterface::record(){
   writeCSV(chunk, "temp.csv");
 
   if(gpio_set_value(LED1_PIN, 0) < 0){
-    _logger.warn(std::string("Error turning off LED\n"));
+    _logger->warn("Error turning off LED");
     return -1;
   }
+  
+  _logger->log("Successfully recorded data");
   return 1;
   //return getHeartRate(chunk);
 }
@@ -115,6 +128,7 @@ int dataInterface::writeCSV(int chunk[], const char filename[]){
     out << i*SAMPLE_PERIOD << "," << chunk[i] << std::endl;
   }
   out.close();
+  _logger->log("Successfully wrote .csv file");
   return 0;
 }
 
